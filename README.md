@@ -1,35 +1,33 @@
-[![progress-banner](https://backend.codecrafters.io/progress/bittorrent/596d5368-8b28-4b5e-be03-a95e20e18649)](https://app.codecrafters.io/users/Vatsal-Chaudhary?r=2qF)
+# bittorrent-rs
 
-This is a starting point for Rust solutions to the
-["Build Your Own BitTorrent" Challenge](https://app.codecrafters.io/courses/bittorrent/overview).
+A BitTorrent client written in Rust.
 
-In this challenge, you’ll build a BitTorrent client that's capable of parsing a
-.torrent file and downloading a file from a peer. Along the way, we’ll learn
-about how torrent files are structured, HTTP trackers, BitTorrent’s Peer
-Protocol, pipelining and more.
+Originally started as the [CodeCrafters "Build Your Own BitTorrent"](https://app.codecrafters.io/courses/bittorrent/overview) challenge and extended into a personal project.
 
-**Note**: If you're viewing this repo on GitHub, head over to
-[codecrafters.io](https://codecrafters.io) to try the challenge.
+## Features
 
-# Passing the first stage
+- Bencode decoder (strings, integers, lists, dictionaries)
+- Torrent file parsing
+- Info hash calculation
+- Tracker communication (HTTP)
+- Peer handshake
+- Piece downloading
+- (add more as you implement them)
 
-The entry point for your BitTorrent implementation is in `src/main.rs`. Study
-and uncomment the relevant code, then run the command below to execute the tests
-on our servers:
+## Usage
 
-```sh
-codecrafters submit
-```
+```bash
+# Decode bencoded data
+cargo run -- decode "d3:foo3:bar5:helloi52ee"
 
-Time to move on to the next stage!
+# Show torrent info
+cargo run -- info sample.torrent
 
-# Stage 2 & beyond
+# Discover peers
+cargo run -- peers sample.torrent
 
-Note: This section is for stages 2 and beyond.
+# Download a piece
+cargo run -- download_piece -o piece.bin sample.torrent 0
 
-1. Ensure you have `cargo (1.96)` installed locally
-1. Run `./your_program.sh` to run your program, which is implemented in
-   `src/main.rs`. This command compiles your Rust project, so it might be slow
-   the first time you run it. Subsequent runs will be fast.
-1. Run `codecrafters submit` to submit your solution to CodeCrafters. Test
-   output will be streamed to your terminal.
+# Download the full file
+cargo run -- download -o output.bin sample.torrent

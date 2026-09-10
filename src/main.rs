@@ -1,62 +1,25 @@
+use serde::Deserialize;
+use serde_bencode;
+use serde_json;
 use std::env;
 
-// Available if you need it!
-// use serde_bencode
+// Metainfo files (also known as .torrent files) are bencoded dictionaries with the following keys:
+#[derive(Debug, Clone, Deserialize)]
+struct Torrent {
+    // The URL of the tracker
+    announce: reqwest::Url,
 
-#[allow(dead_code)]
-fn decode_bencoded_value(encoded_value: &str) -> (serde_json::Value, &str) {
-    match encoded_value.chars().next() {
-        Some('i') => {
-            if let Some((n, rest)) =
-                encoded_value
-                    .split_at(1)
-                    .1
-                    .split_once('e')
-                    .and_then(|(digits, rest)| {
-                        let n = digits.parse::<i64>().ok()?;
-                        Some((n, rest))
-                    })
-            {
-                return (n.into(), rest);
-            }
-        }
-        Some('l') => {
-            let mut values = Vec::new();
-            let mut rest = encoded_value.split_at(1).1;
-            while !rest.is_empty() && !rest.starts_with('e') {
-                let (v, remainder) = decode_bencoded_value(rest);
-                values.push(v);
-                rest = remainder
-            }
-            return (values.into(), &rest[1..]);
-        }
-        Some('d') => {
-            let mut dict = serde_json::Map::new();
-            let mut rest = encoded_value.split_at(1).1;
-            while !rest.is_empty() && !rest.starts_with('e') {
-                let (k, remainder) = decode_bencoded_value(rest);
-                let k = match k {
-                    serde_json::Value::String(k) => k,
-                    k => {
-                        panic!("dict key must be strings, not {k:?}")
-                    }
-                };
-                let (v, remainder) = decode_bencoded_value(remainder);
-                dict.insert(k, v);
-                rest = remainder
-            }
-            return (dict.into(), &rest[1..]);
-        }
-        Some('0'..='9') => {
-            if let Some((len, rest)) = encoded_value.split_once(':') {
-                if let Ok(len) = len.parse::<usize>() {
-                    return (rest[..len].to_string().into(), &rest[len..]);
-                }
-            }
-        }
-        _ => {}
-    }
-    panic!("Unhandled encoded value: {}", encoded_value)
+    // This maps to dictionary, with keys describe below
+    info: Info,
+}
+
+struct Info {
+    // The name key maps to a UTF-8 encoded string which is the suggested name to save the file (or directory) as. It is purely advisory.
+    name: String,
+
+    // piece length maps to the number of bytes in each piece the file is split into. For the purposes of transfer, files are split into fixed-size pieces which are all the same length except for possibly the last one which may be truncated. piece length is almost always a power of two, most commonly 2 18 = 256 K (BitTorrent prior to version 3.2 uses 2 20 = 1 M as default).
+    #[serde(rename = "piece length")]
+    plength: usize,
 }
 
 // Usage: your_program.sh decode "<encoded_value>"
