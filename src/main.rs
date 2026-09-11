@@ -161,7 +161,12 @@ fn main() -> anyhow::Result<()> {
             let mut hasher = Sha1::new();
             hasher.update(&info_encoded);
             let info_hash = hasher.finalize();
-            println!("Info Hash: {}", hex::encode(&info_hash))
+            println!("Info Hash: {}", hex::encode(&info_hash));
+            println!("Piece Length: {}", t.info.plength);
+            println!("Piece Hashes:");
+            for hash in t.info.pieces.0 {
+                println!("{}", hex::encode(&hash));
+            }
         }
     }
 
@@ -170,11 +175,11 @@ fn main() -> anyhow::Result<()> {
 
 mod hashes {
     use serde::de::{self, Deserialize, Deserializer, Visitor};
-    use serde::ser::{Serialize, SerializeMap, SerializeSeq, Serializer};
+    use serde::ser::{Serialize, Serializer};
     use std::fmt;
 
     #[derive(Debug, Clone)]
-    pub struct Hashes(Vec<[u8; 20]>);
+    pub struct Hashes(pub Vec<[u8; 20]>);
     struct HashesVisitor;
 
     impl<'de> Visitor<'de> for HashesVisitor {
