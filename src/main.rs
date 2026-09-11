@@ -1,14 +1,15 @@
 use anyhow::Context;
 use clap::{Parser, Subcommand};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_bencode;
 use serde_json;
+use sha1::{Digest, Sha1};
 use std::path::PathBuf;
 
 use hashes::Hashes;
 
 /// Metainfo files (also known as .torrent files) are bencoded dictionaries with the following keys:
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 struct Torrent {
     // The URL of the tracker
     announce: String,
@@ -16,20 +17,7 @@ struct Torrent {
     info: Info,
 }
 
-#[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
-struct Args {
-    #[command(subcommand)]
-    command: Command,
-}
-
-#[derive(Subcommand, Debug)]
-enum Command {
-    Decode { value: String },
-    Info { torent: PathBuf },
-}
-
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 struct Info {
     /// suggested name to save the file (or directory) as. It is purely advisory.
     ///
@@ -53,7 +41,7 @@ struct Info {
 }
 
 /// There is also a key `length` or a key `files`, but not both or neither. ,
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
 enum Keys {
     /// If length is present then the download represents a single file
@@ -69,7 +57,7 @@ enum Keys {
     MultiFile { file: Vec<File> },
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 struct File {
     /// The length of the file, in bytes.
     length: usize,
@@ -77,6 +65,19 @@ struct File {
     /// Subdirectory names of this file, the last of which is the actual file name
     /// (a zero length list is an error case).
     path: Vec<String>,
+}
+
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    #[command(subcommand)]
+    command: Command,
+}
+
+#[derive(Subcommand, Debug)]
+enum Command {
+    Decode { value: String },
+    Info { torent: PathBuf },
 }
 
 // serde_bincode -> serde_json::Value is borked, so keep our manual impl too
@@ -153,8 +154,14 @@ fn main() -> anyhow::Result<()> {
             if let Keys::SingleFile { length } = t.info.keys {
                 println!("Length: {length}")
             } else {
-                todo!()
+                todo!();
             }
+            let info_encoded =
+                serde_bencode::to_bytes(&t.info).context("re-encode info section")?;
+            let mut hasher = Sha1::new();
+            hasher.update(&info_encoded);
+            let info_hash = hasher.finalize();
+            println!("Info Hash: {}", hex::encode(&info_hash))
         }
     }
 
@@ -163,6 +170,7 @@ fn main() -> anyhow::Result<()> {
 
 mod hashes {
     use serde::de::{self, Deserialize, Deserializer, Visitor};
+    use serde::ser::{Serialize, SerializeMap, SerializeSeq, Serializer};
     use std::fmt;
 
     #[derive(Debug, Clone)]
@@ -197,6 +205,16 @@ mod hashes {
             D: Deserializer<'de>,
         {
             deserializer.deserialize_bytes(HashesVisitor)
+        }
+    }
+
+    impl Serialize for Hashes {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            let single_slice = self.0.concat();
+            serializer.serialize_bytes(&single_slice)
         }
     }
 }
