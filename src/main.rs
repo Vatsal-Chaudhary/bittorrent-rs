@@ -1,8 +1,6 @@
 use anyhow::Context;
 use clap::{Parser, Subcommand};
 use serde::{Deserialize, Serialize};
-use serde_bencode;
-use serde_json;
 use sha1::{Digest, Sha1};
 use std::path::PathBuf;
 
@@ -146,10 +144,9 @@ fn main() -> anyhow::Result<()> {
             println!("{v}")
         }
         Command::Info { torent } => {
-            let mut dot_torrent = std::fs::read(torent).context("open torrent file")?;
+            let dot_torrent = std::fs::read(torent).context("open torrent file")?;
             let t: Torrent =
                 serde_bencode::from_bytes(&dot_torrent).context("parse torrent file")?;
-            eprintln!("{t:?}");
             println!("Tracker URL: {}", t.announce);
             if let Keys::SingleFile { length } = t.info.keys {
                 println!("Length: {length}")
@@ -161,11 +158,11 @@ fn main() -> anyhow::Result<()> {
             let mut hasher = Sha1::new();
             hasher.update(&info_encoded);
             let info_hash = hasher.finalize();
-            println!("Info Hash: {}", hex::encode(&info_hash));
+            println!("Info Hash: {}", hex::encode(info_hash));
             println!("Piece Length: {}", t.info.plength);
             println!("Piece Hashes:");
             for hash in t.info.pieces.0 {
-                println!("{}", hex::encode(&hash));
+                println!("{}", hex::encode(hash));
             }
         }
     }
